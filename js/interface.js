@@ -28,6 +28,7 @@ var enterpriseSubmission = {};
 var unsignedSubmission = {};
 var notificationSettings = {};
 var appInfo;
+var demoUser;
 var statusTableTemplate = $('#status-table-template').html();
 var $statusAppStoreTableElement = $('.app-build-appstore-status-holder');
 var $statusEnterpriseTableElement = $('.app-build-enterprise-status-holder');
@@ -270,6 +271,12 @@ function loadAppStoreData() {
 
     $('[name="' + name + '"]').val((typeof appStoreSubmission.data[name] !== "undefined") ? appStoreSubmission.data[name] : '');
   });
+
+  // Saving 'demo user' value from API to compare it in checkDemoUser function
+  demoUser = appStoreSubmission.data['fl-store-revDemoUser'];
+  
+  // When all data is loaded we can check if demo user was saved before
+  checkDemoUser();
 
   if (appName !== '' && appIcon && (checkHasAllScreenshots() || screenshotValidationNotRequired)) {
     if (appSettings.splashScreen && appSettings.splashScreen.size && (appSettings.splashScreen.size[0] && appSettings.splashScreen.size[1]) < 2732) {
@@ -1571,6 +1578,18 @@ function checkGroupErrors() {
   });
 }
 
+// We set required attribute to 'demo password' only if 'demo user' field is not empty
+function checkDemoUser(keyUp) {
+  // Check if this is a user change the field
+  userInput = event && event.key || false;
+  // When google tries to auto-fill 'demo user' field, we checking data fron API and delete google auto-fill
+  // if no saved data for this field
+  if (!userInput) {
+    $('#fl-store-revDemoUser').val(demoUser ? demoUser : '');
+  }
+  $('#fl-store-revDemoPass').prop('required', $('#fl-store-revDemoUser').val() !== ''); 
+}
+
 function isValidVersion(version) {
   return /^[0-9]{1,2}\.[0-9]{1,2}\.[0-9]{1,2}$/.test(version);
 }
@@ -2255,6 +2274,21 @@ $('#fl-store-2fa-select, #fl-ent-2fa-select').on('change', function (e) {
   // Send device selection via socket
   toggleLoginForm(getCurrentLoginForm(), '2fa-waiting');
   socket.to(socketClientId).emit('aab.apple.login.2fa.device', e.target.value);
+});
+
+Fliplet().then(function () {
+  checkDemoUser();
+});
+
+// This listener need that we can understand that it is a user entering data but not an any password managers.
+$('#fl-store-revDemoUser').on('keyup', function () {
+  checkDemoUser();
+});
+
+// After user blur from 'demo user' field we check again to make sure that the field is empty. 
+// If field is empty we remove required attribute.
+$('#fl-store-revDemoUser').on('change', function () {
+  checkDemoUser();
 });
 
 $('.2fa-code-store-button, .2fa-code-ent-button').on('click', function (e) {
