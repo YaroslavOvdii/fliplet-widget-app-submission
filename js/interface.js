@@ -29,6 +29,7 @@ var unsignedSubmission = {};
 var notificationSettings = {};
 var appInfo;
 var demoUser;
+var userInput;
 var statusTableTemplate = $('#status-table-template').html();
 var $statusAppStoreTableElement = $('.app-build-appstore-status-holder');
 var $statusEnterpriseTableElement = $('.app-build-enterprise-status-holder');
@@ -1579,15 +1580,14 @@ function checkGroupErrors() {
 }
 
 // We set required attribute to 'demo password' only if 'demo user' field is not empty
-function checkDemoUser(keyUp) {
-  // Check if this is a user change the field
-  userInput = event && event.key || false;
+function checkDemoUser() {
   // When google tries to auto-fill 'demo user' field, we checking data fron API and delete google auto-fill
   // if no saved data for this field
+  var $demoUserFiled = $('#fl-store-revDemoUser');
   if (!userInput) {
-    $('#fl-store-revDemoUser').val(demoUser ? demoUser : '');
+    $demoUserFiled.val(demoUser ? demoUser : '');
   }
-  $('#fl-store-revDemoPass').prop('required', $('#fl-store-revDemoUser').val() !== ''); 
+  $('#fl-store-revDemoPass').prop('required', $demoUserFiled.val() !== ''); 
 }
 
 function isValidVersion(version) {
@@ -2281,8 +2281,8 @@ Fliplet().then(function () {
 });
 
 // This listener need that we can understand that it is a user entering data but not an any password managers.
-$('#fl-store-revDemoUser').on('keyup', function () {
-  checkDemoUser();
+$('#fl-store-revDemoUser').on('keyup', function (event) {
+  userInput = event && event.key || false;
 });
 
 // After user blur from 'demo user' field we check again to make sure that the field is empty. 
