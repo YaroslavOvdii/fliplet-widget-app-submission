@@ -667,9 +667,7 @@ function loadPushNotesData() {
 }
 
 function submissionBuild(appSubmission, origin) {
-  saveFirebaseSettings(origin).then(function () {
-    return Fliplet.App.Submissions.build(appSubmission.id);
-  }).then(function (builtSubmission) {
+  Fliplet.App.Submissions.build(appSubmission.id).then(function (builtSubmission) {
     if (origin === "appStore") {
       appStoreSubmission = builtSubmission.submission;
       // Auto increments the version number and saves the submission
@@ -733,10 +731,16 @@ function save(origin, submission) {
 
       submission = _.extend(savedSubmission, submission);
       return Promise.resolve();
-    })
-    .then(function () {
+    }).then(function () {
+      return getCredential(submission.data['fl-credentials']).then(function (credential) {
+          if (origin !== 'unsigned' || (origin === 'unsigned' && credential)) {
+            return submission.data['fl-credentials'];
+          }
+        }).catch(function (error) {
+          console.log(error);
+        })
+    }).then(function (previousCredentials) {
       if (submission.status !== 'started') {
-        var previousCredentials = submission.data['fl-credentials'];
         if (submission.data.hasOwnProperty('fl-credentials')) {
           delete submission.data['fl-credentials'];
         }
@@ -759,9 +763,13 @@ function save(origin, submission) {
               cloneCredentialsPromise = cloneCredentials(previousCredentials, enterpriseSubmission);
             } else if (origin === "unsigned") {
               unsignedSubmission = newSubmission;
-              cloneCredentialsPromise = cloneCredentials(previousCredentials, unsignedSubmission);
+              if (previousCredentials) {
+                cloneCredentialsPromise = cloneCredentials(previousCredentials, unsignedSubmission);
+              } else {
+                delete newSubmission.data['fl-credentials'];
+                unsignedSubmission = newSubmission;
+              }
             }
-
             return cloneCredentialsPromise.then(function () {
               return Fliplet.App.Submissions.update(newSubmission.id, newSubmission.data);
             }).then(function () {
@@ -817,6 +825,13 @@ function requestBuild(origin, submission) {
 
       submission = _.extend(savedSubmission, submission);
       return Promise.resolve();
+    })
+    .then(function () {
+      return saveFirebaseSettings(origin).then(function (saved) {
+        if (!saved && origin === 'unsigned') {
+          delete submission.data['fl-credentials'];
+        }
+      })
     })
     .then(function () {
       if (submission.status !== 'started') {
@@ -1957,10 +1972,14 @@ function submissionChecker(submissions) {
     }
   }
 
+  var usub = _.filter(submissions, function (submission) {
+    return submission.data.submissionType === "unsigned" && submission.platform === "ios";
+  });
+
   var cloneUnsignedCredentialsPromise = Promise.resolve();
   if (unsignedSubmission.data && !unsignedSubmission.data['fl-credentials']) {
 
-    var prevSubCred = _.filter(esub, function (submission) {
+    var prevSubCred = _.filter(usub, function (submission) {
       return submission.data && submission.data['fl-credentials'];
     });
 
@@ -1974,10 +1993,6 @@ function submissionChecker(submissions) {
       cloneUnsignedCredentialsPromise = cloneCredentials(previousSubWithCredentials.data['fl-credentials'], unsignedSubmission, true);
     }
   }
-
-  var usub = _.filter(submissions, function (submission) {
-    return submission.data.submissionType === "unsigned" && submission.platform === "ios";
-  });
 
   usub = _.orderBy(usub, function (submission) {
     return new Date(submission.createdAt).getTime();
