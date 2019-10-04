@@ -738,7 +738,7 @@ function save(origin, submission) {
           }
         }).catch(function (error) {
           console.log(error);
-        })
+        });
     }).then(function (previousCredentials) {
       if (submission.status !== 'started') {
         if (submission.data.hasOwnProperty('fl-credentials')) {
